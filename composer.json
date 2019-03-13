@@ -12,7 +12,8 @@
     "minimum-stability": "dev",
     "prefer-stable" : true,
     "require": {
-        "embed/embed": "^3.3"
+        "embed/embed": "^3.3",
+        "spatie/async": "^0.0.4"
     },
     "require-dev": {
         "orchestra/testbench": "^3.7",
