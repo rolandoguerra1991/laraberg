@@ -10,7 +10,8 @@ use VanOns\Laraberg\Events\ContentRendered;
 
 class Content extends Model {
   protected $table = 'lb_contents';
-  public $embeds = [];
+  public $embeds;
+  private $index;
 
   public function contentable() {
     return $this->morphTo();
@@ -42,23 +43,34 @@ class Content extends Model {
   }
   
   public function renderEmbedsParallel($html) {
-    $pool = Pool::create();
+    $pool = Pool::create()->timeout(10);
     $regex = '/<!-- wp:core-embed\/.*?--><figure class="wp-block-embed.*?".*?<div class="wp-block-embed__wrapper">(.*?)<\/div><\/figure>/';
     preg_match_all($regex, $html, $matches);
     // Get all embeds asynchronuosly
-    foreach ($matches[1] as $match) {
-      $pool->add(function () use ($match) {
-        return Embed::create($match)->code;
-      })->then(function($embed) {
-        array_push($this->embeds, $embed);
+    foreach ($matches[1] as $index => $match) {
+      $pool->add(function () use ($index, $match) {
+        $embed = Embed::create($match);
+        return [ "embed" => $embed, "index" => $index ];
+      })->then(function($output) {
+        $this->embeds[$output["index"]] = $output["embed"]->code;
+      })->catch(function($error) {
+        \Log::info(print_r($error));
+      })->timeout(function() {
+        \Log::info('TIMEOUT');
       });
     }
     $pool->wait();
-    $index = 0;
-    $result = preg_replace_callback($regex, function($matches) use($index) {
-      $embed = $this->embeds[$index];
-      $index++;
-      return str_replace('>'.$matches[1].'<', '>'.$embed.'<', $matches[0]);
+    \Log::info(print_r($this->embeds, TRUE));
+    $this->index = -1;
+    $result = preg_replace_callback($regex, function($matches) {
+      $this->index++;
+      \Log::info($this->index);
+      if (array_key_exists($this->index, $this->embeds)) {
+        $embed = $this->embeds[$this->index];
+        return str_replace('>'.$matches[1].'<', '>'.$embed.'<', $matches[0]);
+      } else {
+        return $matches[0];
+      }
     }, $html);
     return $result;
   }
