@@ -1,13 +1,13 @@
 
 @import '~@frontkom/gutenberg-js/build/css/block-library/style.css';
 @import '~@frontkom/gutenberg-js/build/css/style.css';
-@import './wordpress.scss';
 @import './wordpress-overrides.scss';
 
 .laraberg__editor {
-  width: 100%;
+  width: 100% available;
   overflow: hidden;
   border: 1px solid #e2e4e7;
+  min-height: 250px;
 
   .components-notice-list {
     position: sticky;
